@@ -12,6 +12,9 @@
  */
 var only_chi = false
 
+// Set false if do not want console output infos.
+var dbg = true;
+
 var header = {
     'Referer': 'http://music.163.com/',
     'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
@@ -24,9 +27,6 @@ var api = {
     "query": "http://music.163.com/api/search/get/"
 };
 
-// Set false if do not want console output infos.
-var dbg = true;
-
 // Eng | CHN, separated by `|', but only one will be displayed in lyric search
 // window (`Source' column) acording to foobar2000.exe's lang.
 function get_my_name() {
@@ -34,7 +34,7 @@ function get_my_name() {
 }
 
 function get_version() {
-    return "0.1.0";
+    return "0.1.1";
 }
 
 function get_author() {
@@ -131,18 +131,23 @@ function generate_translation(plain, translation) {
     var arr_translation = translation.split("\n");
 
     // 歌词和翻译顶部信息不一定都有，会导致翻译对不齐，所以删掉
-    var plain_start_line = 0;
-    var trans_start_line = 0;
-    for (var i = 0; i < 6; i++) {
-        if (arr_plain[i].indexOf("[ti:") >= 0 || arr_plain[i].indexOf("[ar:") >= 0 || arr_plain[i].indexOf("[al:") >= 0 || arr_plain[i].indexOf("[by:") >= 0 || arr_plain[i].indexOf("[offset:") >= 0 || arr_plain[i].indexOf("[kana:") >= 0) {
-            plain_start_line++;
-        }
-        if (arr_translation[i].indexOf("[ti:") >= 0 || arr_translation[i].indexOf("[ar:") >= 0 || arr_translation[i].indexOf("[al:") >= 0 || arr_translation[i].indexOf("[by:") >= 0 || arr_translation[i].indexOf("[offset:") >= 0 || arr_translation[i].indexOf("[kana:") >= 0) {
-            trans_start_line++;
+    // 同时修复网易云各种怪异的格式
+    for (var i = arr_plain.length - 1; i >= 0; i--) {
+        if (arr_plain[i].indexOf("[ti:") >= 0 || arr_plain[i].indexOf("[ar:") >= 0 || arr_plain[i].indexOf("[al:") >= 0 || arr_plain[i].indexOf("[by:") >= 0 || arr_plain[i].indexOf("[offset:") >= 0 || arr_plain[i].indexOf("[kana:") >= 0 || arr_plain[i] == "") {
+            arr_plain.splice(i, 1);
         }
     }
-    arr_plain.splice(0, plain_start_line);
-    arr_translation.splice(0, trans_start_line);
+    for (var j = arr_translation.length - 1; j >= 0; j--) {
+        if (arr_translation[j].indexOf("[ti:") >= 0 || arr_translation[j].indexOf("[ar:") >= 0 || arr_translation[j].indexOf("[al:") >= 0 || arr_translation[j].indexOf("[by:") >= 0 || arr_translation[j].indexOf("[offset:") >= 0 || arr_translation[j].indexOf("[kana:") >= 0 || arr_translation[j] == "") {
+            arr_translation.splice(j, 1);
+            continue;
+        }
+        if (!arr_translation[j].match(/\[\d\d:\d\d.\d\d\]/g) && arr_translation[j] != "") {
+            arr_translation[j - 1] += arr_translation[j];
+            arr_translation.splice(j, 1);
+        }
+    }
+
     // 有的歌词和翻译对不齐，处理一下
     if (arr_plain.length != arr_translation.length) {
         for (var i = 0; i < arr_plain.length; i++) {
@@ -181,6 +186,8 @@ function generate_translation(plain, translation) {
             }
         }
     }
+    // ne_trace(arr_plain);
+    // ne_trace(arr_translation);
 
     // 开始拼接歌词和翻译
     var translated_lyrics = "";
@@ -191,7 +198,7 @@ function generate_translation(plain, translation) {
             timestamp = "[" + format_time(to_millisecond(arr_plain[i + 1].substr(1, 8))) + "]";
         }
         else {
-            timestamp = "[" + format_time(to_millisecond(arr_plain[i].substr(1, 8)) + 1000) + "]";
+            timestamp = "[" + format_time(to_millisecond(arr_plain[i].substr(1, 8)) + 60000) + "]";
         }
         if (!arr_translation[j] || arr_plain[i].substr(1, 8) !== arr_translation[j].substr(1, 8)) {
             translated_lyrics += timestamp + "\r\n";
@@ -305,6 +312,7 @@ function ne_trace(s) {
         return;
     }
     fb.trace("网易云中文 $>  " + s);
+    // console.log(s);
 }
 
 function pre_trim(lrc) {
