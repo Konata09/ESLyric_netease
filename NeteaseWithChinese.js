@@ -215,6 +215,8 @@ function generate_translation(plain, translation) {
             j++;
         }
     }
+    // 将部分字体可能显示为方框的空白字符替换为普通空格
+    translated_lyrics = translated_lyrics.replace(/[\u2005]+/g, " ");
     // ne_trace(translated_lyrics);
     return translated_lyrics;
 }
