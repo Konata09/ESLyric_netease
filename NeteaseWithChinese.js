@@ -56,16 +56,22 @@ function start_search(info, callback) {
     http_client.addPostData(get_search_params(artist, title));
 
     json_txt = http_client.Request(api.query, "POST");
+
     if (http_client.StatusCode != 200) {
-        ne_trace("Request url >>>" + api.query + "<<< error: " + http_client.StatusCode);
+        ne_trace("Request url ERROR >>> " + api.query);
+        return;
+    }
+    var res = json(json_txt)
+    if (res['code'] != 200){
+        ne_trace("Request url >>> "+ api.query +" result ERROR >>> " + json_txt);
         return;
     }
 
-    var obj_result = json(json_txt)["result"];
+    var obj_result = res["result"];
     var songs;
     if (obj_result.songs) {
         songs = obj_result.songs;
-        ne_trace(songs.length);
+        ne_trace("got result length "+songs.length);
     } else {
         ne_trace(json_txt);
         return;
@@ -87,17 +93,25 @@ function start_search(info, callback) {
             artist = songs[i].artists[0].name;
             title = songs[i].name;
             album = songs[i].album.name;
-        } catch (e) { };
+        } catch (e) {
+            ne_trace(e)
+        };
         url = api.lyric + "?os=pc&id=" + id + "&lv=-1&kv=-1&tv=-1";
+        var http_client = utils.CreateHttpClient();
         add_headers(header, http_client);
         json_txt = http_client.Request(url);
         if (http_client.StatusCode != 200) {
-            ne_trace("Request url >>>" + url + "<<< error: " + http_client.StatusCode);
+            ne_trace("Request url ERROR >>> " + url);
+            continue;
+        }
+        var res_lyric = json(json_txt)
+        if (res['code'] != 200){
+            ne_trace("Request url >>> "+ api.query +" result ERROR >>> " + json_txt);
             continue;
         }
         try {
-            var ori_lrc = json(json_txt).lrc.lyric;
-            var ori_tlrc = json(json_txt).tlyric.lyric;
+            var ori_lrc = res_lyric.lrc.lyric;
+            var ori_tlrc = res_lyric.tlyric.lyric;
             if (!ori_tlrc) {
                 if (only_chi)
                     continue;
@@ -114,7 +128,7 @@ function start_search(info, callback) {
             callback.AddLyric(_new_lyric);
             (i % 2 == 0) && callback.Refresh();
         } catch (e) {
-            ne_trace(e.message);
+            ne_trace(e);
         }
     }
 
