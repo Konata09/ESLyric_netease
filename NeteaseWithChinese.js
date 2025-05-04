@@ -10,7 +10,7 @@
  * set true will only return lyrics that have translation to the result list.
  * 设置为true将只返回带有翻译的歌词.
  */
-var only_chi = false
+var only_chi = true
 
 // Set false if do not want console output infos.
 var dbg = true;
@@ -56,22 +56,16 @@ function start_search(info, callback) {
     http_client.addPostData(get_search_params(artist, title));
 
     json_txt = http_client.Request(api.query, "POST");
-
     if (http_client.StatusCode != 200) {
-        ne_trace("Request url ERROR >>> " + api.query);
-        return;
-    }
-    var res = json(json_txt)
-    if (res['code'] != 200){
-        ne_trace("Request url >>> "+ api.query +" result ERROR >>> " + json_txt);
+        ne_trace("Request url >>>" + api.query + "<<< error: " + http_client.StatusCode);
         return;
     }
 
-    var obj_result = res["result"];
+    var obj_result = json(json_txt)["result"];
     var songs;
     if (obj_result.songs) {
         songs = obj_result.songs;
-        ne_trace("got result length "+songs.length);
+        ne_trace(songs.length);
     } else {
         ne_trace(json_txt);
         return;
@@ -93,25 +87,17 @@ function start_search(info, callback) {
             artist = songs[i].artists[0].name;
             title = songs[i].name;
             album = songs[i].album.name;
-        } catch (e) {
-            ne_trace(e)
-        };
+        } catch (e) { };
         url = api.lyric + "?os=pc&id=" + id + "&lv=-1&kv=-1&tv=-1";
-        var http_client = utils.CreateHttpClient();
         add_headers(header, http_client);
         json_txt = http_client.Request(url);
         if (http_client.StatusCode != 200) {
-            ne_trace("Request url ERROR >>> " + url);
-            continue;
-        }
-        var res_lyric = json(json_txt)
-        if (res['code'] != 200){
-            ne_trace("Request url >>> "+ api.query +" result ERROR >>> " + json_txt);
+            ne_trace("Request url >>>" + url + "<<< error: " + http_client.StatusCode);
             continue;
         }
         try {
-            var ori_lrc = res_lyric.lrc.lyric;
-            var ori_tlrc = res_lyric.tlyric.lyric;
+            var ori_lrc = json(json_txt).lrc.lyric;
+            var ori_tlrc = json(json_txt).tlyric.lyric;
             if (!ori_tlrc) {
                 if (only_chi)
                     continue;
@@ -128,7 +114,7 @@ function start_search(info, callback) {
             callback.AddLyric(_new_lyric);
             (i % 2 == 0) && callback.Refresh();
         } catch (e) {
-            ne_trace(e);
+            ne_trace(e.message);
         }
     }
 
@@ -137,9 +123,9 @@ function start_search(info, callback) {
 }
 
 function generate_translation(plain, translation) {
-    // ne_trace(plain);
-    // ne_trace("############################################");
-    // ne_trace(translation);
+     // ne_trace(plain);
+     // ne_trace("############################################");
+     // ne_trace(translation);
 
     var arr_plain = plain.split("\n");
     var arr_translation = translation.split("\n");
@@ -156,7 +142,7 @@ function generate_translation(plain, translation) {
             arr_translation.splice(j, 1);
             continue;
         }
-        if (!arr_translation[j].match(/\[\d\d:\d\d.\d\d\]/g) && arr_translation[j] != "") {
+        if (!arr_translation[j].match(/^\[\d\d:\d\d\.\d\d\]/g) && arr_translation[j] != "") {
             arr_translation[j - 1] += arr_translation[j];
             arr_translation.splice(j, 1);
         }
@@ -333,9 +319,9 @@ function ne_trace(s) {
 
 function pre_trim(lrc) {
     lrc = lrc.replace(/^[^\[]+|(\\n)+$/g, "");
-    lrc = lrc.replace(/\[\d\d:\d\d.\d\d\d\]/g, function (match) {
-        return match.substr(0, 9) + "]";
+    lrc = lrc.replace(/\[\d\d:\d\d.\d\d\d?\]/g, function (match) {
+        return match.substr(0, 6) + "." + match.substr(7, 2) + "]";
     })
-    // fb.trace(lrc);
+    // fb.trace("after trim " + lrc);
     return lrc;
 }
